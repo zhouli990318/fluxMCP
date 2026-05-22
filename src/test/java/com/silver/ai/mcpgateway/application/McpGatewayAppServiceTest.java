@@ -1,6 +1,7 @@
 package com.silver.ai.mcpgateway.application;
 
 import com.silver.ai.mcpgateway.domain.model.ApiSource;
+import com.silver.ai.mcpgateway.domain.model.AuthType;
 import com.silver.ai.mcpgateway.domain.model.ToolMapping;
 import com.silver.ai.mcpgateway.domain.port.ApiSourceRepository;
 import com.silver.ai.mcpgateway.domain.port.OpenApiParserPort;
@@ -36,7 +37,7 @@ class McpGatewayAppServiceTest {
         when(parser.parse("spec", 10L)).thenReturn(List.of(mapping));
         when(toolRepository.save(mapping)).thenReturn(Mono.just(mapping));
 
-        StepVerifier.create(service.createApiSource("demo", "desc", "https://api.example.com", "spec"))
+        StepVerifier.create(service.createApiSource("demo", "desc", "https://api.example.com", AuthType.NONE, null, "spec"))
                 .assertNext(result -> assertEquals(10L, result.getId()))
                 .verifyComplete();
 
@@ -90,7 +91,7 @@ class McpGatewayAppServiceTest {
 
         // 192.168.x is a site-local address — SSRF protection should block it
         StepVerifier.create(Mono.defer(() ->
-                        service.createApiSource("demo", "desc", "192.168.9.148:8080/api", null)))
+                        service.createApiSource("demo", "desc", "192.168.9.148:8080/api", AuthType.NONE, null, null)))
                 .expectErrorMatches(ex -> ex instanceof BusinessException
                         && "参数校验失败".equals(((BusinessException) ex).getErrorCode().getMessage()))
                 .verify();
@@ -103,7 +104,7 @@ class McpGatewayAppServiceTest {
 
         // normalizeBaseUrl throws synchronously before returning Mono
         StepVerifier.create(Mono.defer(() ->
-                        service.createApiSource("demo", "desc", "http://bad host", null)))
+                        service.createApiSource("demo", "desc", "http://bad host", AuthType.NONE, null, null)))
                 .expectErrorMatches(ex -> ex instanceof BusinessException
                         && "参数校验失败".equals(((BusinessException) ex).getErrorCode().getMessage()))
                 .verify();

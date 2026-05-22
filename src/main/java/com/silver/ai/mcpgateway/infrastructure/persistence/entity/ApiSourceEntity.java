@@ -1,5 +1,6 @@
 package com.silver.ai.mcpgateway.infrastructure.persistence.entity;
 
+import com.silver.ai.mcpgateway.domain.model.AuthType;
 import com.silver.ai.mcpgateway.domain.model.HealthStatus;
 import com.silver.ai.mcpgateway.domain.model.ProtocolType;
 import lombok.*;
@@ -29,6 +30,13 @@ public class ApiSourceEntity {
 
     @Column("openapi_spec")
     private String openApiSpec;
+
+    @Column("auth_type")
+    @Builder.Default
+    private AuthType authType = AuthType.NONE;
+
+    @Column("auth_config")
+    private String authConfig;
 
     @Builder.Default
     private boolean active = true;

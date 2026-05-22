@@ -1,6 +1,7 @@
 package com.silver.ai.mcpgateway.domain.service;
 
 import com.silver.ai.mcpgateway.domain.model.ApiSource;
+import com.silver.ai.mcpgateway.domain.model.AuthType;
 import com.silver.ai.mcpgateway.domain.model.ToolMapping;
 import com.silver.ai.mcpgateway.domain.port.HttpClientPort;
 import com.silver.ai.mcpgateway.common.exception.BusinessException;
@@ -42,7 +43,7 @@ public class ToolInvocationDomainService {
         try {
             InvocationPayload payload = parsePayload(toolMapping, arguments);
             String url = buildUrl(apiSource.getBaseUrl(), toolMapping.getPath(), payload.pathVariables());
-            Map<String, String> headers = buildHeaders(payload.headerOverrides(), payload.transportHeaders());
+            Map<String, String> headers = buildHeaders(apiSource, payload.headerOverrides(), payload.transportHeaders());
             Map<String, String> queryParams = extractQueryParams(toolMapping, payload);
             String body = buildBody(toolMapping, payload);
 
@@ -112,7 +113,7 @@ public class ToolInvocationDomainService {
         return value.endsWith("/") ? value : value + "/";
     }
 
-    private Map<String, String> buildHeaders(Map<String, String> headerOverrides,
+    private Map<String, String> buildHeaders(ApiSource source, Map<String, String> headerOverrides,
                                              Map<String, String> transportHeaders) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -122,6 +123,34 @@ public class ToolInvocationDomainService {
         }
         if (headerOverrides != null) {
             headers.putAll(headerOverrides);
+        }
+
+        try {
+            if (source.getAuthType() != AuthType.NONE && source.getAuthConfig() != null) {
+                JsonNode authConfig = objectMapper.readTree(source.getAuthConfig());
+                switch (source.getAuthType()) {
+                    case API_KEY -> {
+                        String headerName = authConfig.has("headerName")
+                                ? authConfig.get("headerName").asText() : "X-API-Key";
+                        String apiKey = authConfig.get("apiKey").asText();
+                        headers.put(headerName, apiKey);
+                    }
+                    case BEARER_TOKEN -> {
+                        String token = authConfig.get("token").asText();
+                        headers.put("Authorization", "Bearer " + token);
+                    }
+                    case BASIC_AUTH -> {
+                        String username = authConfig.get("username").asText();
+                        String password = authConfig.get("password").asText();
+                        String encoded = java.util.Base64.getEncoder()
+                                .encodeToString((username + ":" + password).getBytes());
+                        headers.put("Authorization", "Basic " + encoded);
+                    }
+                    default -> {}
+                }
+            }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException | IllegalArgumentException e) {
+            log.warn("Failed to parse auth config", e);
         }
         return headers;
     }

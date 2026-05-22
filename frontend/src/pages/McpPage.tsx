@@ -111,6 +111,8 @@ type SourceFormState = {
   name: string;
   description: string;
   baseUrl: string;
+  authType: string;
+  authConfig: string;
 };
 
 type ToolUpdatePayload = {
@@ -143,6 +145,8 @@ function CreateEditSourceDialog({
     name: '',
     description: '',
     baseUrl: '',
+    authType: 'NONE',
+    authConfig: '',
   });
 
   useEffect(() => {
@@ -155,11 +159,13 @@ function CreateEditSourceDialog({
         name: initialSource.name,
         description: initialSource.description || '',
         baseUrl: initialSource.baseUrl || '',
+        authType: initialSource.authType || 'NONE',
+        authConfig: '',
       });
       return;
     }
 
-    setForm({ name: '', description: '', baseUrl: '' });
+    setForm({ name: '', description: '', baseUrl: '', authType: 'NONE', authConfig: '' });
   }, [initialSource, open]);
 
   return (
@@ -169,6 +175,18 @@ function CreateEditSourceDialog({
         <TextField label="名称" required value={form.name} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} />
         <TextField label="描述" value={form.description} onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))} />
         <TextField label="Base URL" value={form.baseUrl} onChange={(e) => setForm((current) => ({ ...current, baseUrl: e.target.value }))} />
+        <FormControl>
+          <InputLabel>认证方式</InputLabel>
+          <Select value={form.authType} onChange={(e) => setForm((current) => ({ ...current, authType: String(e.target.value) }))} label="认证方式">
+            <MenuItem value="NONE">无</MenuItem>
+            <MenuItem value="API_KEY">API Key</MenuItem>
+            <MenuItem value="BEARER_TOKEN">Bearer Token</MenuItem>
+            <MenuItem value="BASIC_AUTH">Basic Auth</MenuItem>
+          </Select>
+        </FormControl>
+        {form.authType !== 'NONE' && (
+          <TextField label="认证配置" value={form.authConfig} onChange={(e) => setForm((current) => ({ ...current, authConfig: e.target.value }))} helperText="API Key 或 Token" />
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>取消</Button>
@@ -639,6 +657,7 @@ export default function McpPage() {
       name: payload.name.trim(),
       description: payload.description.trim(),
       baseUrl: payload.baseUrl.trim(),
+      authConfig: payload.authConfig.trim(),
     };
     if (editingSource) {
       updateSourceMutation.mutate({ id: editingSource.id, data: normalizedPayload });

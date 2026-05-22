@@ -53,7 +53,6 @@ app:
       ttl: ${MCP_GATEWAY_SESSION_TTL:${APP_MCP_SESSION_TTL:PT30M}}
       cleanup-interval: ${MCP_GATEWAY_SESSION_CLEANUP_INTERVAL:${APP_MCP_SESSION_CLEANUP_INTERVAL:PT5M}}
       allowed-passthrough-headers:
-        - Authorization
         - X-Request-Id
         - X-Correlation-Id
         - Traceparent
@@ -61,6 +60,7 @@ app:
         - Accept-Language
         - User-Agent
       blocked-passthrough-headers:
+        - Authorization
         - Cookie
         - Host
         - Content-Length

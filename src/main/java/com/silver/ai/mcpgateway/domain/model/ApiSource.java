@@ -7,7 +7,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +28,10 @@ public class ApiSource {
     private String baseUrl;
     /** 原始 OpenAPI 规范文本 */
     private String openApiSpec;
+    @Builder.Default
+    private AuthType authType = AuthType.NONE;
+    /** JSON 格式的认证配置 */
+    private String authConfig;
     @Builder.Default
     private boolean active = true;
     @Builder.Default
@@ -87,10 +90,12 @@ public class ApiSource {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateInfo(String name, String description, String baseUrl) {
+    public void updateInfo(String name, String description, String baseUrl, AuthType authType, String authConfig) {
         this.name = name;
         this.description = description;
         this.baseUrl = baseUrl;
+        this.authType = authType;
+        this.authConfig = authConfig;
         this.updatedAt = LocalDateTime.now();
     }
 

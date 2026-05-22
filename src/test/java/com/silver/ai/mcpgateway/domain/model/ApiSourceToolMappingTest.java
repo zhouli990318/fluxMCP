@@ -22,7 +22,7 @@ class ApiSourceToolMappingTest {
 
         source.activate();
         source.updateSpec("spec");
-        source.updateInfo("updated", "desc", "https://api.example.com");
+        source.updateInfo("updated", "desc", "https://api.example.com", AuthType.API_KEY, "{}");
         source.setToolMappings(List.of(ToolMapping.builder().toolName("tool").build()));
 
         assertTrue(source.isActive());

@@ -10,6 +10,7 @@ export interface McpApiSource {
   name: string;
   description: string;
   baseUrl: string;
+  authType: string;
   active: boolean;
   toolMappings: McpToolMapping[];
   healthStatus?: HealthStatus;
@@ -23,6 +24,8 @@ export interface CreateMcpApiSourcePayload {
   name: string;
   description: string;
   baseUrl: string;
+  authType: string;
+  authConfig: string;
   openApiSpec?: string;
 }
 
@@ -30,6 +33,8 @@ export interface UpdateMcpApiSourcePayload {
   name: string;
   description: string;
   baseUrl: string;
+  authType: string;
+  authConfig: string;
 }
 
 export type ParseSourceType = 'SPEC' | 'URL';

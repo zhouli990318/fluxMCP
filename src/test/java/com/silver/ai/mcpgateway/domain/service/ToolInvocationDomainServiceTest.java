@@ -2,6 +2,7 @@ package com.silver.ai.mcpgateway.domain.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silver.ai.mcpgateway.domain.model.ApiSource;
+import com.silver.ai.mcpgateway.domain.model.AuthType;
 import com.silver.ai.mcpgateway.domain.model.ToolMapping;
 import com.silver.ai.mcpgateway.domain.port.HttpClientPort;
 import com.silver.ai.mcpgateway.common.exception.BusinessException;
@@ -30,6 +31,8 @@ class ToolInvocationDomainServiceTest {
         ApiSource source = ApiSource.builder()
                 .name("demo")
                 .baseUrl("https://api.example.com/")
+                .authType(AuthType.API_KEY)
+                .authConfig("{\"headerName\":\"X-Token\",\"apiKey\":\"abc\"}")
                 .build();
         ToolMapping mapping = ToolMapping.builder()
                 .toolName("getUser")
@@ -49,6 +52,7 @@ class ToolInvocationDomainServiceTest {
         verify(httpClient).execute(methodCaptor.capture(), urlCaptor.capture(), headerCaptor.capture(), queryCaptor.capture(), bodyCaptor.capture());
         assertEquals("GET", methodCaptor.getValue());
         assertEquals("https://api.example.com/users/123", urlCaptor.getValue());
+        assertEquals("abc", headerCaptor.getValue().get("X-Token"));
         assertEquals("name", queryCaptor.getValue().get("q"));
         assertNull(bodyCaptor.getValue());
     }
@@ -71,6 +75,8 @@ class ToolInvocationDomainServiceTest {
         ApiSource source = ApiSource.builder()
                 .name("demo")
                 .baseUrl("https://api.example.com")
+                .authType(AuthType.BEARER_TOKEN)
+                .authConfig("{\"token\":\"server-token\"}")
                 .build();
         ToolMapping mapping = ToolMapping.builder()
                 .toolName("updateUser")
@@ -85,7 +91,7 @@ class ToolInvocationDomainServiceTest {
               "_query": {"verbose": "true"},
               "_headers": {"x-request-id": "req-1"},
               "_body": {"name": "Alice"},
-              "_mcp": {"transportHeaders": {"traceparent": "00-abc", "authorization": "Bearer client-token"}}
+              "_mcp": {"transportHeaders": {"traceparent": "00-abc"}}
             }
             """;
 
@@ -97,7 +103,7 @@ class ToolInvocationDomainServiceTest {
         ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(httpClient).execute(eq("POST"), eq("https://api.example.com/users/42"),
             headerCaptor.capture(), queryCaptor.capture(), bodyCaptor.capture());
-        assertEquals("Bearer client-token", headerCaptor.getValue().get("authorization"));
+        assertEquals("server-token", headerCaptor.getValue().get("Authorization").replace("Bearer ", ""));
         assertEquals("req-1", headerCaptor.getValue().get("x-request-id"));
         assertEquals("00-abc", headerCaptor.getValue().get("traceparent"));
         assertEquals("true", queryCaptor.getValue().get("verbose"));
@@ -111,6 +117,7 @@ class ToolInvocationDomainServiceTest {
         ApiSource source = ApiSource.builder()
             .name("demo")
             .baseUrl("192.168.9.148:8080/api")
+            .authType(AuthType.NONE)
             .build();
         ToolMapping mapping = ToolMapping.builder()
             .toolName("alarmListUsingGET")
@@ -118,8 +125,8 @@ class ToolInvocationDomainServiceTest {
             .path("/alarm/list")
             .build();
 
+        // 192.168.x is a site-local address — SSRF protection should block it
         BusinessException exception = assertThrows(BusinessException.class, () -> service.invoke(source, mapping, "{}"));
-
         assertEquals("MCP工具调用失败", exception.getErrorCode().getMessage());
         verify(httpClient, never()).execute(any(), any(), any(), any(), any());
         }
@@ -131,6 +138,7 @@ class ToolInvocationDomainServiceTest {
         ApiSource source = ApiSource.builder()
             .name("demo")
             .baseUrl("http://bad host")
+            .authType(AuthType.NONE)
             .build();
         ToolMapping mapping = ToolMapping.builder()
             .toolName("alarmListUsingGET")

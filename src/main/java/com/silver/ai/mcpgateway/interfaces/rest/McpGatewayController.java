@@ -53,7 +53,7 @@ public class McpGatewayController {
     public Mono<ApiResponse<ApiSourceResponse>> createSource(@Valid @RequestBody CreateApiSourceRequest req) {
         return mcpService.createApiSource(
                         req.getName(), req.getDescription(), req.getBaseUrl(),
-                        req.getOpenApiSpec())
+                        req.getAuthType(), req.getAuthConfig(), req.getOpenApiSpec())
                 .flatMap(source -> refreshRegistrySafely(source).thenReturn(ApiResponse.ok(ApiSourceResponse.from(source))));
     }
 
@@ -88,7 +88,8 @@ public class McpGatewayController {
     @PutMapping("/sources/{id}")
     public Mono<ApiResponse<ApiSourceResponse>> updateSource(@PathVariable Long id, @Valid @RequestBody UpdateApiSourceRequest req) {
         return mcpService.updateApiSource(id,
-                        req.getName(), req.getDescription(), req.getBaseUrl())
+                        req.getName(), req.getDescription(), req.getBaseUrl(),
+                        req.getAuthType(), req.getAuthConfig())
                 .flatMap(source -> refreshRegistrySafely(source).thenReturn(ApiResponse.ok(ApiSourceResponse.from(source))));
     }
 

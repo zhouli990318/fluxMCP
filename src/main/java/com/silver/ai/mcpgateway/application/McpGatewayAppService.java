@@ -1,6 +1,7 @@
 package com.silver.ai.mcpgateway.application;
 
 import com.silver.ai.mcpgateway.domain.model.ApiSource;
+import com.silver.ai.mcpgateway.domain.model.AuthType;
 import com.silver.ai.mcpgateway.domain.model.ToolMapping;
 import com.silver.ai.mcpgateway.domain.port.ApiSourceRepository;
 import com.silver.ai.mcpgateway.domain.port.OpenApiParserPort;
@@ -37,13 +38,16 @@ public class McpGatewayAppService {
 
     @Transactional
     public Mono<ApiSource> createApiSource(String name, String description, String baseUrl,
-                                           String openApiSpec) {
+                                           AuthType authType, String authConfig, String openApiSpec) {
         String normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+        validateAuthConfig(authType, authConfig);
         validateSpecSize(openApiSpec);
         ApiSource source = ApiSource.builder()
                 .name(name)
                 .description(description)
                 .baseUrl(normalizedBaseUrl)
+                .authType(authType)
+                .authConfig(authConfig)
                 .openApiSpec(openApiSpec)
                 .build();
         return apiSourceRepository.save(source)
@@ -56,10 +60,12 @@ public class McpGatewayAppService {
                 });
     }
 
-    public Mono<ApiSource> updateApiSource(Long id, String name, String description, String baseUrl) {
+    public Mono<ApiSource> updateApiSource(Long id, String name, String description, String baseUrl,
+                                            AuthType authType, String authConfig) {
+        validateAuthConfig(authType, authConfig);
         return getApiSource(id)
                 .flatMap(source -> {
-                    source.updateInfo(name, description, normalizeBaseUrl(baseUrl));
+                    source.updateInfo(name, description, normalizeBaseUrl(baseUrl), authType, authConfig);
                     return apiSourceRepository.save(source);
                 });
     }
@@ -195,4 +201,14 @@ public class McpGatewayAppService {
         }
     }
 
+    private void validateAuthConfig(AuthType authType, String authConfig) {
+        if (authType == null || authType == AuthType.NONE || authConfig == null || authConfig.isBlank()) {
+            return;
+        }
+        try {
+            objectMapper.readTree(authConfig);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "authConfig 不是合法的 JSON");
+        }
+    }
 }
