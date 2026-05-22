@@ -1,0 +1,49 @@
+{
+  "properties": [
+    {
+      "name": "redis.sdk.config.host",
+      "type": "java.lang.String",
+      "description": "Redisson server host."
+    },
+    {
+      "name": "redis.sdk.config.port",
+      "type": "java.lang.Integer",
+      "description": "Redisson server port."
+    },
+    {
+      "name": "redis.sdk.config.password",
+      "type": "java.lang.String",
+      "description": "Redisson server password."
+    },
+    {
+      "name": "app.mcp.sse-path",
+      "type": "java.lang.String",
+      "description": "SSE endpoint path for the MCP server."
+    },
+    {
+      "name": "app.mcp.streamable-http-path",
+      "type": "java.lang.String",
+      "description": "Streamable HTTP endpoint path for the MCP server."
+    },
+    {
+      "name": "app.mcp.session.ttl",
+      "type": "java.time.Duration",
+      "description": "Session time-to-live."
+    },
+    {
+      "name": "app.mcp.session.cleanup-interval",
+      "type": "java.time.Duration",
+      "description": "Interval between session cleanup runs."
+    },
+    {
+      "name": "app.mcp.session.allowed-passthrough-headers",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Headers allowed to pass through from MCP transport requests."
+    },
+    {
+      "name": "app.mcp.session.blocked-passthrough-headers",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Headers blocked from passthrough."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: mcp-gateway
+  profiles:
+    active: ${MCP_GATEWAY_PROFILES_ACTIVE:local}
+  main:
+    web-application-type: reactive
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: mcp_gateway
+    create-schemas: true
+    baseline-on-migrate: true
+
+  ai:
+    mcp:
+      server:
+        name: mcp-gateway
+        version: 2.0.0
+  http:
+    codecs:
+      max-in-memory-size: 10MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,redis,mcpRegistry
+
+app:
+  mcp:
+    streamable-http-path: ${MCP_GATEWAY_STREAMABLE_HTTP_PATH:${APP_MCP_STREAMABLE_HTTP_PATH:/mcp/message}}
+    health:
+      enabled: ${MCP_GATEWAY_HEALTH_ENABLED:${APP_MCP_HEALTH_ENABLED:true}}
+      check-interval: ${MCP_GATEWAY_HEALTH_INTERVAL:${APP_MCP_HEALTH_INTERVAL:PT60S}}
+      probe-timeout: ${MCP_GATEWAY_HEALTH_TIMEOUT:${APP_MCP_HEALTH_TIMEOUT:PT5S}}
+      slow-threshold: ${MCP_GATEWAY_HEALTH_SLOW_THRESHOLD:${APP_MCP_HEALTH_SLOW:PT3S}}
+      max-consecutive-failures: ${MCP_GATEWAY_HEALTH_MAX_FAILURES:${APP_MCP_HEALTH_MAX_FAILURES:5}}
+      auto-deactivate-on-max-failures: ${MCP_GATEWAY_HEALTH_AUTO_DEACTIVATE:${APP_MCP_HEALTH_AUTO_DEACTIVATE:true}}
+      probe-concurrency: ${MCP_GATEWAY_HEALTH_CONCURRENCY:${APP_MCP_HEALTH_CONCURRENCY:5}}
+    session:
+      store-type: ${MCP_GATEWAY_SESSION_STORE_TYPE:${APP_MCP_SESSION_STORE_TYPE:memory}}
+      ttl: ${MCP_GATEWAY_SESSION_TTL:${APP_MCP_SESSION_TTL:PT30M}}
+      cleanup-interval: ${MCP_GATEWAY_SESSION_CLEANUP_INTERVAL:${APP_MCP_SESSION_CLEANUP_INTERVAL:PT5M}}
+      allowed-passthrough-headers:
+        - Authorization
+        - X-Request-Id
+        - X-Correlation-Id
+        - Traceparent
+        - Tracestate
+        - Accept-Language
+        - User-Agent
+      blocked-passthrough-headers:
+        - Cookie
+        - Host
+        - Content-Length
+        - Connection
+        - Transfer-Encoding
