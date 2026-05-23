@@ -21,21 +21,6 @@ spring:
     codecs:
       max-in-memory-size: 10MB
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: when_authorized
-      group:
-        liveness:
-          include: livenessState
-        readiness:
-          include: readinessState,db,redis,mcpRegistry
 
 app:
   mcp:

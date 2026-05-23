@@ -7,12 +7,12 @@ spring:
       enabled: true
 
   r2dbc:
-    url: ${MCP_GATEWAY_R2DBC_URL:${APP_R2DBC_URL:r2dbc:postgresql://localhost:5442/ai_rag_platform?schema=mcp_gateway}}
+    url: ${MCP_GATEWAY_R2DBC_URL:${APP_R2DBC_URL:r2dbc:postgresql://localhost:5442/mcp_gateway}}
     username: ${MCP_GATEWAY_DB_USERNAME:${APP_DATASOURCE_USERNAME:postgres}}
     password: ${MCP_GATEWAY_DB_PASSWORD:${APP_DATASOURCE_PASSWORD:123456}}
 
   flyway:
-    url: ${MCP_GATEWAY_JDBC_URL:${APP_DATASOURCE_URL:jdbc:postgresql://localhost:5442/ai_rag_platform}}
+    url: ${MCP_GATEWAY_JDBC_URL:${APP_DATASOURCE_URL:jdbc:postgresql://localhost:5442/mcp_gateway}}
     user: ${MCP_GATEWAY_DB_USERNAME:${APP_DATASOURCE_USERNAME:postgres}}
     password: ${MCP_GATEWAY_DB_PASSWORD:${APP_DATASOURCE_PASSWORD:123456}}
 
