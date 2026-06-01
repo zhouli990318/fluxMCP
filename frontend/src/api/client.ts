@@ -14,7 +14,7 @@ const resolveApiBaseUrl = () => {
     return '/api';
   }
 
-  const proxyTarget = trimValue(import.meta.env.VITE_MCP_GATEWAY_PROXY_TARGET);
+  const proxyTarget = trimValue(import.meta.env.VITE_FLUX_MCP_PROXY_TARGET);
   if (proxyTarget) {
     return `${removeTrailingSlashes(proxyTarget)}/api`;
   }

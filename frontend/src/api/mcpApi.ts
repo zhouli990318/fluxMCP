@@ -12,7 +12,7 @@ import {
 
 const BASE = '/v1/mcp';
 
-export const mcpGatewayApi = {
+export const fluxMcpApi = {
   listSources: () => mcpApi.get<ApiResponse<McpApiSource[]>>(`${BASE}/sources`).then((r) => r.data.data),
   getConnectionInfo: () => mcpApi.get<ApiResponse<McpConnectionInfo>>(`${BASE}/connection-info`).then((r) => r.data.data),
   getSourceConnectionInfo: (id: number) =>

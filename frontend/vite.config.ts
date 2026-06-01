@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const gatewayProxyTarget = env.VITE_MCP_GATEWAY_PROXY_TARGET || 'http://localhost:8092';
+  const gatewayProxyTarget = env.VITE_FLUX_MCP_PROXY_TARGET || 'http://localhost:8092';
   const apiProxy = {
     '/api': {
       target: gatewayProxyTarget,

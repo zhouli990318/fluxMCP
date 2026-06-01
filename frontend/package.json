@@ -1,5 +1,5 @@
 {
-  "name": "mcp-gateway-console",
+  "name": "flux-mcp-console",
   "private": true,
   "version": "1.0.0",
   "type": "module",

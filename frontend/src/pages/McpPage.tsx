@@ -11,7 +11,7 @@ import {
   Add, Delete, PlayArrow, Edit, ContentCopy, Refresh, Api, Search,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { mcpGatewayApi } from '../api/mcpApi';
+import { fluxMcpApi } from '../api/mcpApi';
 import { CreateMcpApiSourcePayload, McpApiSource, McpToolMapping, ParseOpenApiPayload, UpdateMcpApiSourcePayload } from '../api/types';
 import { useSnackbar } from 'notistack';
 
@@ -496,7 +496,7 @@ function TestToolDrawer({
   }, [open, toolId]);
 
   const testToolMutation = useMutation({
-    mutationFn: (payload: { id: number; args: string }) => mcpGatewayApi.testTool(payload.id, payload.args),
+    mutationFn: (payload: { id: number; args: string }) => fluxMcpApi.testTool(payload.id, payload.args),
     onSuccess: (data) => setResult(typeof data === 'string' ? data : JSON.stringify(data, null, 2)),
     onError: (error: any) => setResult('Error: ' + (error.message || 'Unknown')),
   });
@@ -550,15 +550,15 @@ export default function McpPage() {
 
   useEffect(() => { setToolSearch(''); setToolPage(0); }, [selectedSource?.id]);
 
-  const { data: sources = [], isLoading } = useQuery({ queryKey: ['mcp-sources'], queryFn: mcpGatewayApi.listSources });
+  const { data: sources = [], isLoading } = useQuery({ queryKey: ['mcp-sources'], queryFn: fluxMcpApi.listSources });
   const { data: connectionInfo } = useQuery({
     queryKey: ['mcp-source-connection-info', selectedSource?.id],
-    queryFn: () => mcpGatewayApi.getSourceConnectionInfo(selectedSource!.id),
+    queryFn: () => fluxMcpApi.getSourceConnectionInfo(selectedSource!.id),
     enabled: !!selectedSource,
   });
   const { data: tools = [], refetch: refetchTools } = useQuery({
     queryKey: ['mcp-tools', selectedSource?.id],
-    queryFn: () => mcpGatewayApi.getTools(selectedSource!.id),
+    queryFn: () => fluxMcpApi.getTools(selectedSource!.id),
     enabled: !!selectedSource,
   });
 
@@ -580,7 +580,7 @@ export default function McpPage() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: CreateMcpApiSourcePayload) => mcpGatewayApi.createSource(data),
+    mutationFn: (data: CreateMcpApiSourcePayload) => fluxMcpApi.createSource(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-sources'] });
       setCreateOpen(false);
@@ -590,7 +590,7 @@ export default function McpPage() {
     onError: (e: any) => enqueueSnackbar(e?.response?.data?.message || '创建失败', { variant: 'error' }),
   });
   const updateSourceMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateMcpApiSourcePayload }) => mcpGatewayApi.updateSource(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateMcpApiSourcePayload }) => fluxMcpApi.updateSource(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-sources'] });
       setCreateOpen(false);
@@ -600,27 +600,27 @@ export default function McpPage() {
     onError: () => enqueueSnackbar('更新失败', { variant: 'error' }),
   });
   const deleteMutation = useMutation({
-    mutationFn: mcpGatewayApi.deleteSource,
+    mutationFn: fluxMcpApi.deleteSource,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['mcp-sources'] }); setSelectedSource(null); enqueueSnackbar('删除成功', { variant: 'success' }); },
     onError: (e: any) => enqueueSnackbar(e?.response?.data?.message || '删除失败', { variant: 'error' }),
   });
   const parseMutation = useMutation({
-    mutationFn: (data: ParseOpenApiPayload) => mcpGatewayApi.parseSpec(selectedSource!.id, data),
+    mutationFn: (data: ParseOpenApiPayload) => fluxMcpApi.parseSpec(selectedSource!.id, data),
     onSuccess: () => { refetchTools(); enqueueSnackbar('解析完成', { variant: 'success' }); },
     onError: () => enqueueSnackbar('解析失败', { variant: 'error' }),
   });
   const toggleToolMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) => mcpGatewayApi.updateTool(id, { enabled }),
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) => fluxMcpApi.updateTool(id, { enabled }),
     onSuccess: () => { refetchTools(); enqueueSnackbar('工具状态已更新', { variant: 'success' }); },
     onError: (e: any) => enqueueSnackbar(e?.response?.data?.message || '操作失败', { variant: 'error' }),
   });
   const updateToolMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) => mcpGatewayApi.updateTool(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) => fluxMcpApi.updateTool(id, data),
     onSuccess: () => { refetchTools(); setEditingTool(null); enqueueSnackbar('已更新', { variant: 'success' }); },
     onError: () => enqueueSnackbar('更新失败', { variant: 'error' }),
   });
   const toggleSourceMutation = useMutation({
-    mutationFn: mcpGatewayApi.toggleSourceActive,
+    mutationFn: fluxMcpApi.toggleSourceActive,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-sources'] });
       queryClient.invalidateQueries({ queryKey: ['mcp-health'] });
@@ -629,7 +629,7 @@ export default function McpPage() {
     onError: (e: any) => enqueueSnackbar(e?.response?.data?.message || '操作失败', { variant: 'error' }),
   });
   const healthCheckMutation = useMutation({
-    mutationFn: mcpGatewayApi.triggerHealthCheck,
+    mutationFn: fluxMcpApi.triggerHealthCheck,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-health'] });
       enqueueSnackbar('健康检查已完成', { variant: 'success' });
@@ -638,7 +638,7 @@ export default function McpPage() {
   });
   const { data: sourceHealth = [] } = useQuery({
     queryKey: ['mcp-health'],
-    queryFn: mcpGatewayApi.listSourcesHealth,
+    queryFn: fluxMcpApi.listSourcesHealth,
     refetchInterval: 30000,
   });
   const healthMap = new Map(sourceHealth.map((h) => [h.id, h]));

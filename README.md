@@ -1,6 +1,6 @@
-# MCP Gateway
+# Flux MCP
 
-`mcp-gateway` is the standalone bridge between OpenAPI-described HTTP APIs and MCP-compatible tool exposure.
+`flux-mcp` is the standalone bridge between OpenAPI-described HTTP APIs and MCP-compatible tool exposure.
 
 ## What it does
 
@@ -17,13 +17,13 @@ This repository is already standalone-oriented:
 - no dependency on the original monorepo `shared-kernel`
 - standalone Maven root (`pom.xml`)
 - standalone Dockerfile and Compose
-- standalone environment variables prefixed with `MCP_GATEWAY_`
+- standalone environment variables prefixed with `FLUX_MCP_`
 
 ## Run locally
 
 Prerequisites:
 
-- PostgreSQL compatible with the existing `mcp_gateway` schema migrations
+- PostgreSQL compatible with the existing `flux_mcp` schema migrations
 - optional Redis if you want shared/distributed session storage
 - Java 21+
 - Maven 3.9+
@@ -31,7 +31,7 @@ Prerequisites:
 Compile locally:
 
 ```powershell
-cd mcp-gateway-standalone
+cd flux-mcp-standalone
 mvn -DskipTests compile
 ```
 
@@ -49,7 +49,7 @@ Container-oriented standalone assets are also included:
 docker compose -f compose.yml up --build
 ```
 
-The standalone compose file mounts `init-db.sql` to create the `mcp_gateway` schema explicitly, and Flyway is also configured with `create-schemas=true` as a fallback.
+The standalone compose file mounts `init-db.sql` to create the `flux_mcp` schema explicitly, and Flyway is also configured with `create-schemas=true` as a fallback.
 
 By default the service uses `src/main/resources/application.yml` and profile overlays in `application-dev.yml` and `application-local.yml`.
 
@@ -59,18 +59,18 @@ Use the variables in `.env.example`.
 
 Core variables:
 
-- `MCP_GATEWAY_SERVER_PORT`
-- `MCP_GATEWAY_R2DBC_URL`
-- `MCP_GATEWAY_JDBC_URL`
-- `MCP_GATEWAY_DB_USERNAME`
-- `MCP_GATEWAY_DB_PASSWORD`
-- `MCP_GATEWAY_SESSION_STORE_TYPE`
+- `FLUX_MCP_SERVER_PORT`
+- `FLUX_MCP_R2DBC_URL`
+- `FLUX_MCP_JDBC_URL`
+- `FLUX_MCP_DB_USERNAME`
+- `FLUX_MCP_DB_PASSWORD`
+- `FLUX_MCP_SESSION_STORE_TYPE`
 
 Optional Redis variables:
 
-- `MCP_GATEWAY_REDIS_HOST`
-- `MCP_GATEWAY_REDIS_PORT`
-- `MCP_GATEWAY_REDIS_PASSWORD`
+- `FLUX_MCP_REDIS_HOST`
+- `FLUX_MCP_REDIS_PORT`
+- `FLUX_MCP_REDIS_PASSWORD`
 
 ## Session storage modes
 

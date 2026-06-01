@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.silver.ai</groupId>
-    <artifactId>mcp-gateway</artifactId>
+    <artifactId>flux-mcp</artifactId>
     <version>2.0.0</version>
-    <name>MCP Gateway</name>
-    <description>MCP Gateway - standalone OpenAPI to MCP protocol bridge</description>
+    <name>Flux MCP</name>
+    <description>Flux MCP - standalone OpenAPI to MCP protocol bridge</description>
 
     <properties>
         <java.version>25</java.version>
