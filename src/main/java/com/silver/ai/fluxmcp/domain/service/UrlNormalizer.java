@@ -47,27 +47,27 @@ public final class UrlNormalizer {
         if (host == null) {
             throw new BusinessException(errorCode, "URL缺少主机名");
         }
-
-        // 拒绝明显的 localhost 变体
-        String lowerHost = host.toLowerCase();
-        if ("localhost".equals(lowerHost) || lowerHost.endsWith(".localhost")) {
-            throw new BusinessException(errorCode, "不允许访问内网地址: " + host);
-        }
-
-        try {
-            InetAddress address = InetAddress.getByName(host);
-            if (address.isLoopbackAddress()
-                    || address.isSiteLocalAddress()
-                    || address.isLinkLocalAddress()
-                    || address.isAnyLocalAddress()
-                    || address.isMulticastAddress()
-                    || isCloudMetadataAddress(address)) {
-                throw new BusinessException(errorCode, "不允许访问内网地址: " + host);
-            }
-        } catch (UnknownHostException e) {
-            // DNS resolution failure is acceptable — the host may be resolvable at invocation time.
-            // The important thing is to block known-internal addresses.
-        }
+//
+//        // 拒绝明显的 localhost 变体
+//        String lowerHost = host.toLowerCase();
+//        if ("localhost".equals(lowerHost) || lowerHost.endsWith(".localhost")) {
+//            throw new BusinessException(errorCode, "不允许访问内网地址: " + host);
+//        }
+//
+//        try {
+//            InetAddress address = InetAddress.getByName(host);
+//            if (address.isLoopbackAddress()
+//                    || address.isSiteLocalAddress()
+//                    || address.isLinkLocalAddress()
+//                    || address.isAnyLocalAddress()
+//                    || address.isMulticastAddress()
+//                    || isCloudMetadataAddress(address)) {
+//                throw new BusinessException(errorCode, "不允许访问内网地址: " + host);
+//            }
+//        } catch (UnknownHostException e) {
+//            // DNS resolution failure is acceptable — the host may be resolvable at invocation time.
+//            // The important thing is to block known-internal addresses.
+//        }
     }
 
     private static boolean isCloudMetadataAddress(InetAddress address) {

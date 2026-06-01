@@ -1,5 +1,5 @@
 -- MCP Gateway schema
-CREATE TABLE mcp_gateway.api_source (
+CREATE TABLE api_source (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(200) NOT NULL,
     description     TEXT,
@@ -13,9 +13,9 @@ CREATE TABLE mcp_gateway.api_source (
     updated_at      TIMESTAMP
 );
 
-CREATE TABLE mcp_gateway.tool_mapping (
+CREATE TABLE tool_mapping (
     id               BIGSERIAL PRIMARY KEY,
-    api_source_id    BIGINT NOT NULL REFERENCES mcp_gateway.api_source(id) ON DELETE CASCADE,
+    api_source_id    BIGINT NOT NULL REFERENCES api_source(id) ON DELETE CASCADE,
     operation_id     VARCHAR(200),
     tool_name        VARCHAR(200) NOT NULL,
     tool_description VARCHAR(2000),
@@ -26,5 +26,5 @@ CREATE TABLE mcp_gateway.tool_mapping (
     enabled          BOOLEAN NOT NULL DEFAULT true,
     created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_tool_mapping_source ON mcp_gateway.tool_mapping(api_source_id);
-CREATE INDEX idx_tool_mapping_enabled ON mcp_gateway.tool_mapping(enabled);
+CREATE INDEX idx_tool_mapping_source ON tool_mapping(api_source_id);
+CREATE INDEX idx_tool_mapping_enabled ON tool_mapping(enabled);
