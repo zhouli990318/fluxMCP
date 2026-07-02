@@ -111,6 +111,54 @@ class ToolInvocationDomainServiceTest {
         }
 
         @Test
+        void invokeShouldNormalizeNonTextQueryArguments() {
+        HttpClientPort httpClient = mock(HttpClientPort.class);
+        ToolInvocationDomainService service = new ToolInvocationDomainService(httpClient, new ObjectMapper());
+        ApiSource source = ApiSource.builder()
+            .name("demo")
+            .baseUrl("https://api.example.com")
+            .authType(AuthType.NONE)
+            .build();
+        ToolMapping mapping = ToolMapping.builder()
+            .toolName("searchUsers")
+            .httpMethod("GET")
+            .path("/users")
+            .build();
+        when(httpClient.execute(any(), any(), any(), any(), any())).thenReturn("ok");
+
+        String result = service.invoke(source, mapping, "{\"tags\":[\"a\",\"b\"],\"active\":true,\"limit\":10}");
+
+        assertEquals("ok", result);
+        ArgumentCaptor<Map<String, String>> queryCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(httpClient).execute(eq("GET"), eq("https://api.example.com/users"), any(), queryCaptor.capture(), any());
+        assertEquals("a,b", queryCaptor.getValue().get("tags"));
+        assertEquals("true", queryCaptor.getValue().get("active"));
+        assertEquals("10", queryCaptor.getValue().get("limit"));
+        }
+
+        @Test
+        void invokeShouldRejectInvalidJsonAuthConfig() {
+        HttpClientPort httpClient = mock(HttpClientPort.class);
+        ToolInvocationDomainService service = new ToolInvocationDomainService(httpClient, new ObjectMapper());
+        ApiSource source = ApiSource.builder()
+            .name("demo")
+            .baseUrl("https://api.example.com")
+            .authType(AuthType.API_KEY)
+            .authConfig("not-json")
+            .build();
+        ToolMapping mapping = ToolMapping.builder()
+            .toolName("getUser")
+            .httpMethod("GET")
+            .path("/users")
+            .build();
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> service.invoke(source, mapping, "{}"));
+
+        assertEquals("MCP工具调用失败", exception.getErrorCode().getMessage());
+        verify(httpClient, never()).execute(any(), any(), any(), any(), any());
+        }
+
+        @Test
         void invokeShouldNormalizeBaseUrlWithoutScheme() {
         HttpClientPort httpClient = mock(HttpClientPort.class);
         ToolInvocationDomainService service = new ToolInvocationDomainService(httpClient, new ObjectMapper());
@@ -124,11 +172,12 @@ class ToolInvocationDomainServiceTest {
             .httpMethod("GET")
             .path("/alarm/list")
             .build();
+        when(httpClient.execute(any(), any(), any(), any(), any())).thenReturn("ok");
 
-        // 192.168.x is a site-local address — SSRF protection should block it
-        BusinessException exception = assertThrows(BusinessException.class, () -> service.invoke(source, mapping, "{}"));
-        assertEquals("MCP工具调用失败", exception.getErrorCode().getMessage());
-        verify(httpClient, never()).execute(any(), any(), any(), any(), any());
+        String result = service.invoke(source, mapping, "{}");
+
+        assertEquals("ok", result);
+        verify(httpClient).execute(eq("GET"), eq("http://192.168.9.148:8080/api/alarm/list"), any(), any(), any());
         }
 
         @Test

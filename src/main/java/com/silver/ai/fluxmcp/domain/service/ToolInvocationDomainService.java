@@ -32,21 +32,25 @@ public class ToolInvocationDomainService {
 
     /**
      * 调用工具
-     * @param apiSource API 源（包含认证信息）
+     *
+     * @param apiSource   API 源（包含认证信息）
      * @param toolMapping 工具映射
-     * @param arguments 调用参数（JSON 字符串）
+     * @param arguments   调用参数（JSON 字符串）
      * @return 调用结果
      */
     public String invoke(ApiSource apiSource, ToolMapping toolMapping, String arguments) {
         apiSource.ensureActive();
 
         try {
+            log.info("Invoking tool: {} -> {} with arguments: {}", toolMapping.getToolName(), toolMapping.getPath(), arguments);
             InvocationPayload payload = parsePayload(toolMapping, arguments);
             String url = buildUrl(apiSource.getBaseUrl(), toolMapping.getPath(), payload.pathVariables());
             Map<String, String> headers = buildHeaders(apiSource, payload.headerOverrides(), payload.transportHeaders());
             Map<String, String> queryParams = extractQueryParams(toolMapping, payload);
             String body = buildBody(toolMapping, payload);
 
+            log.info("Tool invocation details: URL={}, Method={}, Headers={}, QueryParams={}, Body={}",
+                    url, toolMapping.getHttpMethod(), headers, queryParams, body);
             String result = httpClient.execute(
                     toolMapping.getHttpMethod(),
                     url,
@@ -125,34 +129,53 @@ public class ToolInvocationDomainService {
             headers.putAll(headerOverrides);
         }
 
-        try {
-            if (source.getAuthType() != AuthType.NONE && source.getAuthConfig() != null) {
-                JsonNode authConfig = objectMapper.readTree(source.getAuthConfig());
-                switch (source.getAuthType()) {
-                    case API_KEY -> {
-                        String headerName = authConfig.has("headerName")
-                                ? authConfig.get("headerName").asText() : "X-API-Key";
-                        String apiKey = authConfig.get("apiKey").asText();
-                        headers.put(headerName, apiKey);
-                    }
-                    case BEARER_TOKEN -> {
-                        String token = authConfig.get("token").asText();
-                        headers.put("Authorization", "Bearer " + token);
-                    }
-                    case BASIC_AUTH -> {
-                        String username = authConfig.get("username").asText();
-                        String password = authConfig.get("password").asText();
-                        String encoded = java.util.Base64.getEncoder()
-                                .encodeToString((username + ":" + password).getBytes());
-                        headers.put("Authorization", "Basic " + encoded);
-                    }
-                    default -> {}
+        if (source.getAuthType() != AuthType.NONE) {
+            JsonNode authConfig = parseAuthConfig(source.getAuthType(), source.getAuthConfig());
+            switch (source.getAuthType()) {
+                case API_KEY -> {
+                    String headerName = authConfig.has("headerName") && !authConfig.get("headerName").asText().isBlank()
+                            ? authConfig.get("headerName").asText() : "X-API-Key";
+                    String apiKey = requireTextField(authConfig, "apiKey", source.getAuthType());
+                    headers.put(headerName, apiKey);
+                }
+                case BEARER_TOKEN -> {
+                    String token = requireTextField(authConfig, "token", source.getAuthType());
+                    headers.put("Authorization", "Bearer " + token);
+                }
+                case BASIC_AUTH -> {
+                    String username = requireTextField(authConfig, "username", source.getAuthType());
+                    String password = requireTextField(authConfig, "password", source.getAuthType());
+                    String encoded = java.util.Base64.getEncoder()
+                            .encodeToString((username + ":" + password).getBytes());
+                    headers.put("Authorization", "Basic " + encoded);
+                }
+                default -> {
                 }
             }
-        } catch (com.fasterxml.jackson.core.JsonProcessingException | IllegalArgumentException e) {
-            log.warn("Failed to parse auth config", e);
         }
         return headers;
+    }
+
+    private JsonNode parseAuthConfig(AuthType authType, String authConfig) {
+        if (authConfig == null || authConfig.isBlank()) {
+            throw new BusinessException(ErrorCode.MCP_TOOL_INVOCATION_FAILED,
+                    authType.name() + " 认证配置不能为空");
+        }
+        try {
+            return objectMapper.readTree(authConfig);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.MCP_TOOL_INVOCATION_FAILED,
+                    "authConfig 不是合法的 JSON", e);
+        }
+    }
+
+    private String requireTextField(JsonNode authConfig, String fieldName, AuthType authType) {
+        JsonNode fieldNode = authConfig.get(fieldName);
+        if (fieldNode == null || fieldNode.isNull() || fieldNode.asText().isBlank()) {
+            throw new BusinessException(ErrorCode.MCP_TOOL_INVOCATION_FAILED,
+                    authType.name() + " 认证配置缺少字段: " + fieldName);
+        }
+        return fieldNode.asText();
     }
 
     private Map<String, String> extractQueryParams(ToolMapping mapping, InvocationPayload payload) {
@@ -199,9 +222,12 @@ public class ToolInvocationDomainService {
                 if (isReservedKey(entry.getKey())) {
                     continue;
                 }
-                genericArguments.put(entry.getKey(), entry.getValue().isTextual() ? entry.getValue().asText() : entry.getValue().toString());
+
+                String normalizedValue = normalizeArgumentValue(entry.getValue());
+                genericArguments.put(entry.getKey(), normalizedValue);
+
                 if (mapping.getPath().contains("{" + entry.getKey() + "}")) {
-                    pathVariables.putIfAbsent(entry.getKey(), entry.getValue().asText());
+                    pathVariables.putIfAbsent(entry.getKey(), normalizedValue);
                 }
             }
 
@@ -210,6 +236,28 @@ public class ToolInvocationDomainService {
             log.warn("Failed to parse MCP invocation payload, falling back to raw arguments", ex);
             return new InvocationPayload(Map.of(), Map.of(), Map.of(), Map.of(), arguments);
         }
+    }
+
+    private String normalizeArgumentValue(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return "";
+        }
+
+        if (node.isTextual()) {
+            return node.asText();
+        }
+
+        if (node.isArray()) {
+            java.util.List<String> values = new java.util.ArrayList<>();
+            node.forEach(item -> values.add(item.asText()));
+            return String.join(",", values);
+        }
+
+        if (node.isNumber() || node.isBoolean()) {
+            return node.asText();
+        }
+
+        return node.toString();
     }
 
     private Map<String, String> extractTransportHeaders(JsonNode mcpNode) {
