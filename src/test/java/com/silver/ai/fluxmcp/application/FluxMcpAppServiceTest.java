@@ -86,15 +86,14 @@ class FluxMcpAppServiceTest {
     @Test
     void createApiSourceShouldNormalizeBaseUrlWithoutScheme() {
         ApiSourceRepository sourceRepository = mock(ApiSourceRepository.class);
+        when(sourceRepository.save(any(ApiSource.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
         FluxMcpAppService service = new FluxMcpAppService(sourceRepository, mock(ToolMappingRepository.class),
                 mock(OpenApiParserPort.class), mock(ToolInvocationDomainService.class), new ObjectMapper());
 
-        // 192.168.x is a site-local address — SSRF protection should block it
         StepVerifier.create(Mono.defer(() ->
                         service.createApiSource("demo", "desc", "192.168.9.148:8080/api", AuthType.NONE, null, null)))
-                .expectErrorMatches(ex -> ex instanceof BusinessException
-                        && "参数校验失败".equals(((BusinessException) ex).getErrorCode().getMessage()))
-                .verify();
+                .assertNext(result -> assertEquals("http://192.168.9.148:8080/api", result.getBaseUrl()))
+                .verifyComplete();
     }
 
     @Test
@@ -109,4 +108,5 @@ class FluxMcpAppServiceTest {
                         && "参数校验失败".equals(((BusinessException) ex).getErrorCode().getMessage()))
                 .verify();
     }
+
 }

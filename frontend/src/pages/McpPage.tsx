@@ -112,8 +112,65 @@ type SourceFormState = {
   description: string;
   baseUrl: string;
   authType: string;
-  authConfig: string;
+  updateAuthConfig: boolean;
+  authFields: SourceAuthFields;
 };
+
+type SourceAuthFields = {
+  apiKey: string;
+  headerName: string;
+  token: string;
+  username: string;
+  password: string;
+};
+
+function createEmptyAuthFields(): SourceAuthFields {
+  return {
+    apiKey: '',
+    headerName: '',
+    token: '',
+    username: '',
+    password: '',
+  };
+}
+
+function buildAuthConfig(authType: string, authFields: SourceAuthFields): string {
+  switch (authType) {
+    case 'API_KEY':
+      return JSON.stringify({
+        apiKey: authFields.apiKey.trim(),
+        ...(authFields.headerName.trim() ? { headerName: authFields.headerName.trim() } : {}),
+      });
+    case 'BEARER_TOKEN':
+      return JSON.stringify({ token: authFields.token.trim() });
+    case 'BASIC_AUTH':
+      return JSON.stringify({
+        username: authFields.username.trim(),
+        password: authFields.password.trim(),
+      });
+    default:
+      return '';
+  }
+}
+
+function validateAuthFields(authType: string, authFields: SourceAuthFields): string | null {
+  if (authType === 'API_KEY') {
+    return authFields.apiKey.trim() ? null : '请填写 API Key';
+  }
+
+  if (authType === 'BEARER_TOKEN') {
+    return authFields.token.trim() ? null : '请填写 Bearer Token';
+  }
+
+  if (authType === 'BASIC_AUTH') {
+    if (!authFields.username.trim()) {
+      return '请填写用户名';
+    }
+    return authFields.password.trim() ? null : '请填写密码';
+  }
+
+  return null;
+}
 
 type ToolUpdatePayload = {
   toolName: string;
@@ -146,7 +203,8 @@ function CreateEditSourceDialog({
     description: '',
     baseUrl: '',
     authType: 'NONE',
-    authConfig: '',
+    updateAuthConfig: false,
+    authFields: createEmptyAuthFields(),
   });
 
   useEffect(() => {
@@ -160,13 +218,41 @@ function CreateEditSourceDialog({
         description: initialSource.description || '',
         baseUrl: initialSource.baseUrl || '',
         authType: initialSource.authType || 'NONE',
-        authConfig: '',
+        updateAuthConfig: false,
+        authFields: createEmptyAuthFields(),
       });
       return;
     }
 
-    setForm({ name: '', description: '', baseUrl: '', authType: 'NONE', authConfig: '' });
+    setForm({
+      name: '',
+      description: '',
+      baseUrl: '',
+      authType: 'NONE',
+      updateAuthConfig: false,
+      authFields: createEmptyAuthFields(),
+    });
   }, [initialSource, open]);
+
+  const shouldShowAuthFields = useMemo(() => {
+    if (form.authType === 'NONE') {
+      return false;
+    }
+
+    if (!initialSource) {
+      return true;
+    }
+
+    return form.updateAuthConfig || form.authType !== initialSource.authType;
+  }, [form.authType, form.updateAuthConfig, initialSource]);
+
+  const authConfigError = useMemo(() => {
+    if (!shouldShowAuthFields) {
+      return null;
+    }
+
+    return validateAuthFields(form.authType, form.authFields);
+  }, [form.authFields, form.authType, shouldShowAuthFields]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -177,20 +263,122 @@ function CreateEditSourceDialog({
         <TextField label="Base URL" value={form.baseUrl} onChange={(e) => setForm((current) => ({ ...current, baseUrl: e.target.value }))} />
         <FormControl>
           <InputLabel>认证方式</InputLabel>
-          <Select value={form.authType} onChange={(e) => setForm((current) => ({ ...current, authType: String(e.target.value) }))} label="认证方式">
+          <Select
+            value={form.authType}
+            onChange={(e) => {
+              const nextAuthType = String(e.target.value);
+              setForm((current) => ({
+                ...current,
+                authType: nextAuthType,
+                updateAuthConfig: initialSource
+                  ? nextAuthType !== 'NONE' && nextAuthType !== initialSource.authType
+                  : current.updateAuthConfig,
+              }));
+            }}
+            label="认证方式"
+          >
             <MenuItem value="NONE">无</MenuItem>
             <MenuItem value="API_KEY">API Key</MenuItem>
             <MenuItem value="BEARER_TOKEN">Bearer Token</MenuItem>
             <MenuItem value="BASIC_AUTH">Basic Auth</MenuItem>
           </Select>
         </FormControl>
-        {form.authType !== 'NONE' && (
-          <TextField label="认证配置" value={form.authConfig} onChange={(e) => setForm((current) => ({ ...current, authConfig: e.target.value }))} helperText="API Key 或 Token" />
+        {initialSource && form.authType !== 'NONE' && form.authType === initialSource.authType && !form.updateAuthConfig && (
+          <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
+              <Box>
+                <Typography sx={{ fontWeight: 600, fontSize: 14 }}>当前认证配置已存在</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  为安全起见，不显示现有凭证。点击“更新认证配置”后可重新填写并覆盖。
+                </Typography>
+              </Box>
+              <Button variant="outlined" onClick={() => setForm((current) => ({ ...current, updateAuthConfig: true }))}>
+                更新认证配置
+              </Button>
+            </Stack>
+          </Paper>
+        )}
+        {form.authType !== 'NONE' && shouldShowAuthFields && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={2}>
+              {initialSource && form.authType !== initialSource.authType && (
+                <Typography variant="body2" color="text.secondary">
+                  认证方式已变更，请填写新的认证信息。
+                </Typography>
+              )}
+              {form.authType === 'API_KEY' && (
+                <>
+                  <TextField
+                    label="API Key"
+                    required
+                    type="password"
+                    value={form.authFields.apiKey}
+                    onChange={(e) => setForm((current) => ({
+                      ...current,
+                      authFields: { ...current.authFields, apiKey: e.target.value },
+                    }))}
+                    error={Boolean(authConfigError)}
+                    helperText={authConfigError || '用于请求头鉴权'}
+                  />
+                  <TextField
+                    label="Header 名称"
+                    value={form.authFields.headerName}
+                    onChange={(e) => setForm((current) => ({
+                      ...current,
+                      authFields: { ...current.authFields, headerName: e.target.value },
+                    }))}
+                    helperText="可选，默认使用后端默认值"
+                    placeholder="X-API-Key"
+                  />
+                </>
+              )}
+              {form.authType === 'BEARER_TOKEN' && (
+                <TextField
+                  label="Bearer Token"
+                  required
+                  type="password"
+                  value={form.authFields.token}
+                  onChange={(e) => setForm((current) => ({
+                    ...current,
+                    authFields: { ...current.authFields, token: e.target.value },
+                  }))}
+                  error={Boolean(authConfigError)}
+                  helperText={authConfigError || '提交时会按 Bearer Token 方式序列化'}
+                />
+              )}
+              {form.authType === 'BASIC_AUTH' && (
+                <>
+                  <TextField
+                    label="用户名"
+                    required
+                    value={form.authFields.username}
+                    onChange={(e) => setForm((current) => ({
+                      ...current,
+                      authFields: { ...current.authFields, username: e.target.value },
+                    }))}
+                    error={Boolean(authConfigError)}
+                  />
+                  <TextField
+                    label="密码"
+                    required
+                    type="password"
+                    value={form.authFields.password}
+                    onChange={(e) => setForm((current) => ({
+                      ...current,
+                      authFields: { ...current.authFields, password: e.target.value },
+                    }))}
+                    error={Boolean(authConfigError)}
+                    helperText={authConfigError}
+                  />
+                </>
+              )}
+            </Stack>
+          </Paper>
         )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>取消</Button>
-        <Button variant="contained" onClick={() => onSubmit(form)} disabled={loading}>
+        <Button variant="contained" onClick={() => onSubmit(form)} disabled={loading || Boolean(authConfigError)}>
           {initialSource ? '保存' : '创建'}
         </Button>
       </DialogActions>
@@ -597,7 +785,7 @@ export default function McpPage() {
       setEditingSource(null);
       enqueueSnackbar('更新成功', { variant: 'success' });
     },
-    onError: () => enqueueSnackbar('更新失败', { variant: 'error' }),
+    onError: (e: any) => enqueueSnackbar(e?.response?.data?.message || '更新失败', { variant: 'error' }),
   });
   const deleteMutation = useMutation({
     mutationFn: fluxMcpApi.deleteSource,
@@ -652,12 +840,21 @@ export default function McpPage() {
     setCreateOpen(true);
   };
   const handleSourceSubmit = (payload: SourceFormState) => {
+    const shouldPreserveExistingAuthConfig = Boolean(
+      editingSource
+      && payload.authType !== 'NONE'
+      && payload.authType === editingSource.authType
+      && !payload.updateAuthConfig,
+    );
+
     const normalizedPayload = {
-      ...payload,
       name: payload.name.trim(),
       description: payload.description.trim(),
       baseUrl: payload.baseUrl.trim(),
-      authConfig: payload.authConfig.trim(),
+      authType: payload.authType,
+      authConfig: shouldPreserveExistingAuthConfig || payload.authType === 'NONE'
+        ? ''
+        : buildAuthConfig(payload.authType, payload.authFields),
     };
     if (editingSource) {
       updateSourceMutation.mutate({ id: editingSource.id, data: normalizedPayload });

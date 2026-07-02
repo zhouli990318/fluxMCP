@@ -10,6 +10,7 @@ import com.silver.ai.fluxmcp.domain.service.ToolInvocationDomainService;
 import com.silver.ai.fluxmcp.domain.service.UrlNormalizer;
 import com.silver.ai.fluxmcp.common.exception.BusinessException;
 import com.silver.ai.fluxmcp.common.result.ErrorCode;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,10 +63,11 @@ public class FluxMcpAppService {
 
     public Mono<ApiSource> updateApiSource(Long id, String name, String description, String baseUrl,
                                             AuthType authType, String authConfig) {
-        validateAuthConfig(authType, authConfig);
         return getApiSource(id)
                 .flatMap(source -> {
-                    source.updateInfo(name, description, normalizeBaseUrl(baseUrl), authType, authConfig);
+                    String resolvedAuthConfig = resolveAuthConfigForUpdate(source, authType, authConfig);
+                    validateAuthConfig(authType, resolvedAuthConfig);
+                    source.updateInfo(name, description, normalizeBaseUrl(baseUrl), authType, resolvedAuthConfig);
                     return apiSourceRepository.save(source);
                 });
     }
@@ -202,13 +204,50 @@ public class FluxMcpAppService {
     }
 
     private void validateAuthConfig(AuthType authType, String authConfig) {
-        if (authType == null || authType == AuthType.NONE || authConfig == null || authConfig.isBlank()) {
+        if (authType == null || authType == AuthType.NONE) {
             return;
         }
+        if (authConfig == null || authConfig.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER,
+                    authType.name() + " 认证方式要求提供 authConfig JSON");
+        }
         try {
-            objectMapper.readTree(authConfig);
+            JsonNode authConfigNode = objectMapper.readTree(authConfig);
+            switch (authType) {
+                case API_KEY -> requireTextField(authConfigNode, "apiKey", authType);
+                case BEARER_TOKEN -> requireTextField(authConfigNode, "token", authType);
+                case BASIC_AUTH -> {
+                    requireTextField(authConfigNode, "username", authType);
+                    requireTextField(authConfigNode, "password", authType);
+                }
+                default -> {
+                }
+            }
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "authConfig 不是合法的 JSON");
         }
+    }
+
+    private void requireTextField(JsonNode authConfigNode, String fieldName, AuthType authType) {
+        JsonNode fieldNode = authConfigNode.get(fieldName);
+        if (fieldNode == null || fieldNode.isNull() || fieldNode.asText().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER,
+                    authType.name() + " 认证配置缺少字段: " + fieldName);
+        }
+    }
+
+    private String resolveAuthConfigForUpdate(ApiSource source, AuthType authType, String authConfig) {
+        if (authType == null || authType == AuthType.NONE) {
+            return null;
+        }
+        if (authConfig != null && !authConfig.isBlank()) {
+            return authConfig;
+        }
+        if (source.getAuthType() == authType) {
+            return source.getAuthConfig();
+        }
+        return authConfig;
     }
 }
