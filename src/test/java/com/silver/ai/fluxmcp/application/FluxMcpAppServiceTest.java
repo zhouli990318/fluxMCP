@@ -70,6 +70,56 @@ class FluxMcpAppServiceTest {
         verify(toolRepository).save(mapping);
     }
 
+        @Test
+        void createToolMappingShouldApplyDefaultsAndSaveToSource() {
+                ApiSourceRepository sourceRepository = mock(ApiSourceRepository.class);
+                ToolMappingRepository toolRepository = mock(ToolMappingRepository.class);
+                FluxMcpAppService service = new FluxMcpAppService(sourceRepository, toolRepository,
+                                mock(OpenApiParserPort.class), mock(ToolInvocationDomainService.class), new ObjectMapper());
+                ApiSource source = ApiSource.builder().id(7L).name("demo").baseUrl("https://api.example.com").build();
+                String expectedParameterSchema = """
+                        {
+                          "type": "object",
+                          "properties": {},
+                          "required": []
+                        }
+                        """;
+                String expectedParameterSchemaCompact = expectedParameterSchema.replaceAll("\\s", "");
+                when(sourceRepository.findById(7L)).thenReturn(Mono.just(source));
+                when(toolRepository.save(any(ToolMapping.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+                StepVerifier.create(service.createToolMapping(7L,
+                                                "listPets",
+                                                "列出宠物",
+                                                "GET",
+                                                "/pets",
+                                                null,
+                                                null,
+                                                null,
+                                                null))
+                                .assertNext(mapping -> {
+                                        assertEquals(7L, mapping.getApiSourceId());
+                                        assertEquals("listPets", mapping.getOperationId());
+                                        assertEquals("listPets", mapping.getToolName());
+                                        assertEquals("列出宠物", mapping.getToolDescription());
+                                        assertEquals("GET", mapping.getHttpMethod());
+                                        assertEquals("/pets", mapping.getPath());
+                                        assertEquals(expectedParameterSchemaCompact, mapping.getParameterSchema().replaceAll("\\s", ""));
+                                        assertEquals("{}", mapping.getResponseSchema());
+                                        assertEquals("{}", mapping.getExamplePayload());
+                                        assertEquals(true, mapping.isEnabled());
+                                })
+                                .verifyComplete();
+
+                verify(toolRepository).save(argThat(mapping ->
+                                mapping.getApiSourceId().equals(7L)
+                                                && "listPets".equals(mapping.getToolName())
+                                && expectedParameterSchemaCompact.equals(mapping.getParameterSchema().replaceAll("\\s", ""))
+                                                && "{}".equals(mapping.getResponseSchema())
+                                                && "{}".equals(mapping.getExamplePayload())
+                                                && mapping.isEnabled()));
+        }
+
     @Test
     void invokeToolShouldFailWhenToolDoesNotExist() {
         ToolMappingRepository toolRepository = mock(ToolMappingRepository.class);

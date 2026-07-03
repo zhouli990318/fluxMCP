@@ -27,7 +27,7 @@ Flux MCP is a standalone gateway that bridges HTTP REST APIs and the [Model Cont
 - **Multi-source management** — Register multiple API sources with independent auth configs (API Key, Bearer Token, Basic Auth), toggle active/inactive per source.
 - **Source-scoped MCP endpoints** — Each API source gets its own isolated MCP endpoint at `/api/v1/mcp/sources/{id}/mcp/message` with session isolation.
 - **Built-in health monitoring** — Scheduled health checks with auto-deactivation on repeated failures, exponential backoff, and status tracking (HEALTHY / DEGRADED / UNREACHABLE).
-- **Admin console** — React SPA with source CRUD, tool editing (Monaco JSON editor), live tool testing drawer, and connection-info copy-to-clipboard.
+- **Admin console** — React SPA with source CRUD, manual tool creation, tool editing (Monaco JSON editor), live tool testing drawer, and connection-info copy-to-clipboard.
 - **Session flexibility** — In-memory sessions by default (zero config), optional Redis (Redisson) for multi-instance deployments.
 - **Security-first** — SSRF prevention, path traversal protection, configurable header passthrough blocklist, spec size limits.
 
@@ -179,6 +179,7 @@ Base path: `/api/v1/mcp`
 | `POST` | `/sources/{id}/health-check` | Trigger manual health check |
 | `POST` | `/sources/{id}/parse` | Parse OpenAPI spec into tools |
 | `GET` | `/sources/{id}/tools` | List tools for a source |
+| `POST` | `/sources/{id}/tools` | Manually create a tool mapping for a source |
 | `PUT` | `/tools/{id}` | Update a tool mapping |
 | `POST` | `/tools/{id}/test` | Test-invoke a tool |
 | `GET` | `/connection-info` | Get MCP connection info |

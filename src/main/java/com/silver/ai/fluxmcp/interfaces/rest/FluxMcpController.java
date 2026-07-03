@@ -10,6 +10,7 @@ import com.silver.ai.fluxmcp.interfaces.dto.CreateApiSourceRequest;
 import com.silver.ai.fluxmcp.interfaces.dto.ParseOpenApiRequest;
 import com.silver.ai.fluxmcp.interfaces.dto.SourceHealthDto;
 import com.silver.ai.fluxmcp.interfaces.dto.ToolInvokeRequest;
+import com.silver.ai.fluxmcp.interfaces.dto.ToolMappingCreateRequest;
 import com.silver.ai.fluxmcp.interfaces.dto.ToolMappingResponse;
 import com.silver.ai.fluxmcp.interfaces.dto.ToolMappingUpdateRequest;
 import com.silver.ai.fluxmcp.interfaces.dto.UpdateApiSourceRequest;
@@ -159,6 +160,20 @@ public class FluxMcpController {
         return mcpService.getToolMappings(id)
                 .collectList()
                 .map(mappings -> ApiResponse.ok(ToolMappingResponse.fromList(mappings)));
+    }
+
+    @PostMapping("/sources/{id}/tools")
+    public Mono<ApiResponse<ToolMappingResponse>> createTool(@PathVariable Long id, @RequestBody ToolMappingCreateRequest req) {
+        return mcpService.createToolMapping(id,
+                        req.getToolName(), req.getToolDescription(),
+                        req.getHttpMethod(), req.getPath(),
+                        req.getParameterSchema(), req.getResponseSchema(), req.getExamplePayload(),
+                        req.getEnabled())
+                .flatMap(mapping ->
+                        mcpService.getApiSource(mapping.getApiSourceId())
+                                .flatMap(this::refreshRegistrySafely)
+                                .thenReturn(ApiResponse.ok(ToolMappingResponse.from(mapping)))
+                );
     }
 
     @PutMapping("/tools/{id}")
