@@ -27,6 +27,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FluxMcpAppService {
 
+        private static final String DEFAULT_PARAMETER_SCHEMA = """
+                        {
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        }
+                        """;
+        private static final String DEFAULT_JSON_OBJECT = "{}";
+
     private final ApiSourceRepository apiSourceRepository;
     private final ToolMappingRepository toolMappingRepository;
     private final OpenApiParserPort openApiParser;
@@ -154,6 +163,35 @@ public class FluxMcpAppService {
         return toolMappingRepository.findByEnabled(true);
     }
 
+    public Mono<ToolMapping> createToolMapping(Long apiSourceId, String toolName, String toolDescription,
+                                               String httpMethod, String path,
+                                               String parameterSchema, String responseSchema,
+                                               String examplePayload,
+                                               Boolean enabled) {
+        return apiSourceRepository.findById(apiSourceId)
+                .switchIfEmpty(Mono.error(new BusinessException(ErrorCode.MCP_SOURCE_NOT_FOUND)))
+                .flatMap(source -> {
+                    String normalizedToolName = sanitizeToolName(requireNonBlank(toolName, "toolName"));
+                    if (normalizedToolName.isBlank()) {
+                        return Mono.error(new BusinessException(ErrorCode.INVALID_PARAMETER, "toolName 缺少可用字符"));
+                    }
+
+                    ToolMapping mapping = ToolMapping.builder()
+                            .apiSourceId(source.getId())
+                            .operationId(normalizedToolName)
+                            .toolName(normalizedToolName)
+                            .toolDescription(defaultIfNull(toolDescription, normalizedToolName))
+                            .httpMethod(requireNonBlank(httpMethod, "httpMethod").toUpperCase())
+                            .path(normalizePath(path))
+                            .parameterSchema(defaultIfBlank(parameterSchema, DEFAULT_PARAMETER_SCHEMA))
+                            .responseSchema(defaultIfBlank(responseSchema, DEFAULT_JSON_OBJECT))
+                            .examplePayload(defaultIfBlank(examplePayload, DEFAULT_JSON_OBJECT))
+                            .enabled(enabled == null || enabled)
+                            .build();
+                    return toolMappingRepository.save(mapping);
+                });
+    }
+
     public Mono<ToolMapping> updateToolMapping(Long toolId, String toolName, String toolDescription,
                                                 String httpMethod, String path,
                                                 String parameterSchema, String responseSchema,
@@ -249,5 +287,29 @@ public class FluxMcpAppService {
             return source.getAuthConfig();
         }
         return authConfig;
+    }
+
+    private String requireNonBlank(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, fieldName + " 不能为空");
+        }
+        return value.trim();
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private String defaultIfNull(String value, String defaultValue) {
+        return value == null ? defaultValue : value;
+    }
+
+    private String normalizePath(String path) {
+        String normalizedPath = requireNonBlank(path, "path");
+        return normalizedPath.startsWith("/") ? normalizedPath : "/" + normalizedPath;
+    }
+
+    private String sanitizeToolName(String name) {
+        return name.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 }

@@ -28,6 +28,8 @@ export const fluxMcpApi = {
   parseSpec: (id: number, data: ParseOpenApiPayload) =>
     mcpApi.post<ApiResponse<McpToolMapping[]>>(`${BASE}/sources/${id}/parse`, data).then((r) => r.data.data),
   getTools: (id: number) => mcpApi.get<ApiResponse<McpToolMapping[]>>(`${BASE}/sources/${id}/tools`).then((r) => r.data.data),
+  createTool: (sourceId: number, data: Record<string, unknown>) =>
+    mcpApi.post<ApiResponse<McpToolMapping>>(`${BASE}/sources/${sourceId}/tools`, data).then((r) => r.data.data),
   updateTool: (id: number, data: Record<string, unknown>) =>
     mcpApi.put<ApiResponse<McpToolMapping>>(`${BASE}/tools/${id}`, data).then((r) => r.data.data),
   testTool: (id: number, args: string) =>
