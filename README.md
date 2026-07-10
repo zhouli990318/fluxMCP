@@ -55,6 +55,18 @@ docker compose up --build
 
 Open `http://localhost:8092` to access the admin console.
 
+## Example API Source
+
+To verify a hosted OpenAPI import, create an API source in the admin console
+with `https://xquik.com/openapi.json` as the spec URL. Xquik's public REST spec
+includes social search, trends, and X/Twitter workflow endpoints such as
+`/api/v1/trends` and `/api/v1/x/tweets/search`.
+
+For authenticated tool calls, configure API Key auth with the `x-api-key`
+header and store the value outside the source description. Flux MCP can then
+parse the source, expose the selected operations as MCP tools, and keep the
+source isolated under its source-scoped MCP endpoint.
+
 ## Installation
 
 ### Docker Compose (Recommended)
